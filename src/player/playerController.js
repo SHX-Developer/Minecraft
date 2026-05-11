@@ -142,8 +142,16 @@ export class PlayerController {
       return;
     }
 
-    const moveX = Number(this.input.isKeyDown("KeyD")) - Number(this.input.isKeyDown("KeyA"));
-    const moveZ = Number(this.input.isKeyDown("KeyW")) - Number(this.input.isKeyDown("KeyS"));
+    let moveX = Number(this.input.isKeyDown("KeyD")) - Number(this.input.isKeyDown("KeyA"));
+    let moveZ = Number(this.input.isKeyDown("KeyW")) - Number(this.input.isKeyDown("KeyS"));
+
+    // Blend in the virtual joystick (touch / Telegram).
+    const stick = this.input.getJoystick();
+    if (stick && (Math.abs(stick.x) > 0.001 || Math.abs(stick.z) > 0.001)) {
+      moveX = Math.max(-1, Math.min(1, moveX + stick.x));
+      moveZ = Math.max(-1, Math.min(1, moveZ + stick.z));
+    }
+
     const jumpHeld = this.input.isKeyDown("Space");
     const wantsCrouch = this.input.isKeyDown("ShiftLeft") || this.input.isKeyDown("ShiftRight");
     const spacePressed = this.input.consumeKeyPress("Space");
@@ -225,7 +233,15 @@ export class PlayerController {
       this.lastForwardTapTime = now;
     }
 
-    if (!this.input.isKeyDown("KeyW") || moveZ <= 0 || this.player.isCrouching || this.player.inWater) {
+    // Mobile sprint toggle button (virtual "Sprint" key).
+    if (this.input.isKeyDown("Sprint")) {
+      if (!this.player.isCrouching && !this.player.inWater && !this.player.isFlying && moveZ > 0) {
+        this.player.isSprinting = true;
+      }
+    }
+
+    const forwardPressed = this.input.isKeyDown("KeyW") || this.input.isKeyDown("Sprint");
+    if (!forwardPressed || moveZ <= 0 || this.player.isCrouching || this.player.inWater) {
       this.player.isSprinting = false;
     }
   }

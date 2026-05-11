@@ -4,10 +4,25 @@ export const CHUNK_SIZE_Z = 16;
 export const CHUNK_VOLUME = CHUNK_SIZE_X * CHUNK_SIZE_Y * CHUNK_SIZE_Z;
 
 export const WORLD_SEED = 1337;
-export const WORLD_RENDER_RADIUS = 4;
+
+// Detect coarse-pointer / phone-class devices so we can scale down quality.
+function isLowEndDevice() {
+  if (typeof window === "undefined") return false;
+  const coarse = window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+  const touch = ("ontouchstart" in window) || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0);
+  const tgMobile = window.Telegram && window.Telegram.WebApp &&
+    /^(ios|android|android_x|webk|weba)$/i.test(window.Telegram.WebApp.platform || "");
+  return Boolean(tgMobile || (coarse && touch));
+}
+
+const LOW_END = isLowEndDevice();
+
+// On phones, render fewer chunks but stream them in faster so the world
+// fills in before the player walks off the edge of the loaded area.
+export const WORLD_RENDER_RADIUS = LOW_END ? 3 : 4;
 export const WORLD_UNLOAD_RADIUS = WORLD_RENDER_RADIUS + 2;
-export const CHUNK_LOADS_PER_FRAME = 1;
-export const CHUNK_REBUILDS_PER_FRAME = 1;
+export const CHUNK_LOADS_PER_FRAME = LOW_END ? 2 : 3;
+export const CHUNK_REBUILDS_PER_FRAME = LOW_END ? 2 : 3;
 export const WATER_LEVEL = 10;
 
 export const ATLAS_COLUMNS = 8;
@@ -39,30 +54,32 @@ export const MOUSE_SENSITIVITY = 0.0022;
 
 export const CAMERA_FOV = 75;
 export const CAMERA_NEAR = 0.1;
-export const CAMERA_FAR = 320;
+export const CAMERA_FAR = LOW_END ? 220 : 320;
 export const SPRINT_FOV_BOOST = 8;
 export const SPRINT_FOV_SMOOTH = 8;
-export const RENDER_PIXEL_RATIO_MAX = 1.25;
-export const HELD_ITEM_PIXEL_RATIO_MAX = 1.25;
+// Lower pixel ratio on phones gives a big GPU win — the renderer is fill-rate
+// bound and high-DPI screens (3x) tank the frame rate.
+export const RENDER_PIXEL_RATIO_MAX = LOW_END ? 1.0 : 1.25;
+export const HELD_ITEM_PIXEL_RATIO_MAX = LOW_END ? 1.0 : 1.25;
 
 export const SKY_COLOR = 0x8cc9ff;
-export const FOG_NEAR = 35;
-export const FOG_FAR = 180;
+export const FOG_NEAR = LOW_END ? 28 : 35;
+export const FOG_FAR = LOW_END ? 110 : 180;
 export const DAY_DURATION_SECONDS = 300;
 export const NIGHT_DURATION_SECONDS = 300;
 export const STAR_COUNT = 220;
-export const CLOUD_COUNT = 36;
+export const CLOUD_COUNT = LOW_END ? 18 : 36;
 export const CLOUD_HEIGHT = 54;
 
 export const MAX_RAY_DISTANCE = 6;
 export const MAX_DELTA_TIME = 0.05;
 
-export const ANIMAL_MAX_COUNT = 10;
-export const ANIMAL_SPAWN_INTERVAL = 6.0;
-export const ANIMAL_SPAWN_RADIUS = 72;
+export const ANIMAL_MAX_COUNT = LOW_END ? 5 : 10;
+export const ANIMAL_SPAWN_INTERVAL = LOW_END ? 9.0 : 6.0;
+export const ANIMAL_SPAWN_RADIUS = LOW_END ? 56 : 72;
 export const ANIMAL_ATTACK_RANGE = 4.6;
 export const ANIMAL_HP = 5;
-export const ZOMBIE_MAX_COUNT = 8;
+export const ZOMBIE_MAX_COUNT = LOW_END ? 4 : 8;
 export const ZOMBIE_SPAWN_INTERVAL = 10.0;
 export const ZOMBIE_SPAWN_RADIUS_MIN = 12;
 export const ZOMBIE_SPAWN_RADIUS_MAX = 52;

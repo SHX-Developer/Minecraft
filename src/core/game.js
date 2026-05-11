@@ -45,7 +45,9 @@ import { World } from "../world/world.js";
 import { createCamera } from "./camera.js";
 import { GameModeManager } from "./gameMode.js";
 import { InputManager } from "./input.js";
+import { MobileControls } from "./mobileControls.js";
 import { createRenderer, resizeRenderer } from "./renderer.js";
+import { getTelegramState, shouldUseMobileControls } from "./telegram.js";
 
 function loadAtlasTexture(url) {
   const loader = new THREE.TextureLoader();
@@ -150,6 +152,7 @@ export class Game {
     this.atlasTexture = null;
     this.breakRepeatTimer = 0;
     this.placeRepeatTimer = 0;
+    this.mobileControls = null;
   }
 
   async init() {
@@ -291,6 +294,18 @@ export class Game {
     };
     window.addEventListener("keydown", this.onInventoryKeyDown);
 
+    // Mount on-screen touch controls when the input manager reports a touch
+    // device or the page is opened from a mobile Telegram client.
+    const useTouch = this.input.isUsingTouchControls() || shouldUseMobileControls();
+    if (useTouch) {
+      this.mobileControls = new MobileControls({
+        container: this.hudElement,
+        input: this.input,
+        onToggleInventory: () => this.toggleInventoryFromKey(),
+      });
+      document.body.classList.add("touch-controls");
+    }
+
     this.setupAudioUnlock();
     window.addEventListener("resize", this.onResize);
     this.ready = true;
@@ -331,7 +346,8 @@ export class Game {
     }
     this.running = true;
     this.clock.start();
-    this.loop();
+    this._loopBound = this._loopBound || (() => this.loop());
+    requestAnimationFrame(this._loopBound);
   }
 
   loop() {
@@ -339,10 +355,19 @@ export class Game {
       return;
     }
 
+    // When the tab / app is hidden, skip work entirely so we don't burn
+    // battery in the background.
+    if (typeof document !== "undefined" && document.hidden) {
+      // Still keep the clock moving so a giant delta doesn't appear on resume.
+      this.clock.getDelta();
+      requestAnimationFrame(this._loopBound);
+      return;
+    }
+
     const delta = Math.min(this.clock.getDelta(), MAX_DELTA_TIME);
     this.update(delta);
     this.renderer.render(this.scene, this.camera);
-    requestAnimationFrame(() => this.loop());
+    requestAnimationFrame(this._loopBound);
   }
 
   update(delta) {
@@ -352,7 +377,9 @@ export class Game {
 
     this.handleHotbarSelection();
 
-    const controlsEnabled = this.input.locked && !this.inventoryUI.isOpen();
+    // Touch controls don't use pointer lock — controls are enabled whenever
+    // the inventory is closed and the game is in a normal play state.
+    const controlsEnabled = (this.input.isUsingTouchControls() || this.input.locked) && !this.inventoryUI.isOpen();
     this.playerController.update(delta, controlsEnabled);
     const playerPosition = this.playerController.getPosition();
     this.world.update(playerPosition);
@@ -407,11 +434,14 @@ export class Game {
     }
     this.input.consumeKeyPress("KeyE");
     const opened = this.inventoryUI.toggle();
+    if (this.mobileControls) {
+      this.mobileControls.setInventoryOpen(opened);
+    }
     if (opened && document.pointerLockElement) {
       document.exitPointerLock();
       return;
     }
-    if (!opened) {
+    if (!opened && !this.input.isUsingTouchControls()) {
       this.input.requestPointerLock();
     }
   }
@@ -688,7 +718,9 @@ export class Game {
     this.playerController.player.isCrouching = false;
 
     this.dead = false;
-    this.input.requestPointerLock();
+    if (!this.input.isUsingTouchControls()) {
+      this.input.requestPointerLock();
+    }
   }
 
   dropInventoryOnDeath() {
@@ -875,6 +907,9 @@ export class Game {
     }
     if (this.deathScreen) {
       this.deathScreen.destroy();
+    }
+    if (this.mobileControls) {
+      this.mobileControls.destroy();
     }
   }
 }

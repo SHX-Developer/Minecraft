@@ -1,7 +1,11 @@
 import { Game } from "./core/game.js";
+import { initTelegram } from "./core/telegram.js";
 import { MainMenu } from "./ui/mainMenu.js";
 
 async function bootstrap() {
+  // Initialise Telegram Web App integration early so safe-area insets and
+  // viewport sizing are in place before the renderer measures the window.
+  initTelegram();
   const canvas = document.getElementById("game-canvas");
   const hotbar = document.getElementById("hotbar");
   const debug = document.getElementById("debug");
