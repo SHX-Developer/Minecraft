@@ -1,5 +1,25 @@
 # VoxelCraft MVP+ (Three.js)
 
+## Локальный запуск
+
+Корневой проект - статический Three.js сайт:
+
+```powershell
+python -m http.server 8000
+```
+
+Открой `http://localhost:8000`.
+
+В папке `Minecraft-Ursina` есть отдельная Python-версия:
+
+```powershell
+cd Minecraft-Ursina
+python -m venv .venv
+.\.venv\Scripts\activate
+pip install -r requirements.txt
+python main.py
+```
+
 Minecraft-like browser MVP on HTML/CSS/JavaScript (ES modules) + Three.js.
 
 ## What Is Implemented
